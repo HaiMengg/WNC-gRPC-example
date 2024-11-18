@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+import "google/protobuf/timestamp.proto";
+
+package actor;
+
+service ActorsService {
+    rpc GetOne(ActorById) returns (Actor) {}
+    rpc GetMany(stream ActorById) returns (stream Actor) {}
+}
+
+message ActorById {
+    int32 id = 1;
+}
+
+message Actor {
+    int32 actor_id = 1;
+    string first_name = 2;
+    string last_name = 3;
+    google.protobuf.Timestamp last_update = 4;
+}
