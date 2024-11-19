@@ -1,12 +1,14 @@
-import { Controller, Get, Inject, Injectable, OnModuleInit, Param } from "@nestjs/common";
-import { Client, ClientGrpc } from "@nestjs/microservices";
-import { Observable, ReplaySubject, toArray } from "rxjs";
-import { Actor, ActorById, ACTORS_SERVICE_NAME, ActorsServiceClient } from "src/proto/actor.pb";
-import { grpcClientOptions } from "src/utils/grpc-client.options";
+import { Controller, Get, Inject, OnModuleInit, Param } from "@nestjs/common";
+import { ClientGrpc } from "@nestjs/microservices";
+import { timeStamp } from "console";
+import { Observable, ReplaySubject, timestamp, toArray } from "rxjs";
+import { Actor } from "src/models/actors.model";
+import { ActorById, ACTORS_SERVICE_NAME, IActor } from "src/proto/actor.pb";
+import { Timestamp } from 'google/protobuf/timestamp.pb';
 
 interface ActorsService {
     getOne(data: ActorById): Observable<Actor>;
-    getMany(upstream: Observable<ActorById>): Observable<Actor>;
+    getAll(): Observable<Actor>;
 }
 
 @Controller("actors")
@@ -18,21 +20,26 @@ export class ActorsController implements OnModuleInit {
         this.actorsService = this.client.getService<ActorsService>(ACTORS_SERVICE_NAME);
     }
 
-    @Get()
-    getMany(): Observable<Actor[]> {
-        const ids$ = new ReplaySubject<ActorById>();
-        ids$.next({ id: 1 })
-        ids$.next({ id: 2 })
-        ids$.next({ id: 3 })
-        ids$.next({ id: 4 })
-        ids$.complete();
-
-        const stream = this.actorsService.getMany(ids$.asObservable());
-        return stream.pipe(toArray());
+    @Get(":id")
+    getOne(@Param('id') id: number): Observable<Actor> {
+        const actor = this.actorsService.getOne({ id: id })
+        return actor;
     }
 
-    @Get("/:id")
-    getOne(@Param('id') id: number): Observable<Actor> {
-        return this.actorsService.getOne({ id: id })
+    @Get()
+    getAll(): Observable<Actor[]> {
+        const stream = this.actorsService.getAll();
+        stream.subscribe({
+            next: (actor) => {
+                console.log("Received actor:", actor);
+            },
+            complete: () => {
+                console.log("Stream complete");
+            },
+            error: (err) => {
+                console.error("Stream error:", err);
+            },
+        });
+        return stream.pipe(toArray());
     }
 }

@@ -5,15 +5,17 @@ import "google/protobuf/timestamp.proto";
 package actor;
 
 service ActorsService {
-    rpc GetOne(ActorById) returns (Actor) {}
-    rpc GetMany(stream ActorById) returns (stream Actor) {}
+    rpc GetOne(ActorById) returns (IActor) {}
+    rpc GetAll(Empty) returns (stream IActor) {}
 }
+
+message Empty {}
 
 message ActorById {
     int32 id = 1;
 }
 
-message Actor {
+message IActor {
     int32 actor_id = 1;
     string first_name = 2;
     string last_name = 3;

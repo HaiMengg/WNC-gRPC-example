@@ -11,11 +11,14 @@ import { Timestamp } from "../../google/protobuf/timestamp.pb";
 
 export const protobufPackage = "actor";
 
+export interface Empty {
+}
+
 export interface ActorById {
   id: number;
 }
 
-export interface Actor {
+export interface IActor {
   actorId: number;
   firstName: string;
   lastName: string;
@@ -25,25 +28,25 @@ export interface Actor {
 export const ACTOR_PACKAGE_NAME = "actor";
 
 export interface ActorsServiceClient {
-  getOne(request: ActorById): Observable<Actor>;
+  getOne(request: ActorById): Observable<IActor>;
 
-  getMany(request: Observable<ActorById>): Observable<Actor>;
+  getAll(request: Empty): Observable<IActor>;
 }
 
 export interface ActorsServiceController {
-  getOne(request: ActorById): Promise<Actor> | Observable<Actor> | Actor;
+  getOne(request: ActorById): Promise<IActor> | Observable<IActor> | IActor;
 
-  getMany(request: Observable<ActorById>): Observable<Actor>;
+  getAll(request: Empty): Observable<IActor>;
 }
 
 export function ActorsServiceControllerMethods() {
   return function (constructor: Function) {
-    const grpcMethods: string[] = ["getOne"];
+    const grpcMethods: string[] = ["getOne", "getAll"];
     for (const method of grpcMethods) {
       const descriptor: any = Reflect.getOwnPropertyDescriptor(constructor.prototype, method);
       GrpcMethod("ActorsService", method)(constructor.prototype[method], method, descriptor);
     }
-    const grpcStreamMethods: string[] = ["getMany"];
+    const grpcStreamMethods: string[] = [];
     for (const method of grpcStreamMethods) {
       const descriptor: any = Reflect.getOwnPropertyDescriptor(constructor.prototype, method);
       GrpcStreamMethod("ActorsService", method)(constructor.prototype[method], method, descriptor);

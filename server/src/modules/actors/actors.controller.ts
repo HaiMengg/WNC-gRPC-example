@@ -23,56 +23,57 @@
 //     }
 // }
 
-import { Metadata } from "@grpc/grpc-js";
+import { Metadata, ServerDuplexStream } from "@grpc/grpc-js";
 import { Controller } from "@nestjs/common";
 import { GrpcMethod, GrpcStreamCall, GrpcStreamMethod } from "@nestjs/microservices";
 import { InjectModel } from "@nestjs/sequelize";
-import { Observable, Subject } from "rxjs";
-import { ActorModel } from "src/models/actors.model";
-import { Actor, ActorById } from "src/proto/actor.pb";
+import { forkJoin, from, map, mergeMap, Observable, Subject, tap } from "rxjs";
+import { Actor } from "src/models/actors.model";
+import { IActor, ActorById } from "src/proto/actor.pb";
 
 @Controller()
 export class ActorsController {
     constructor(
-        @InjectModel(ActorModel)
-        private actorsModel: typeof ActorModel
+        @InjectModel(Actor)
+        private actorsModel: typeof Actor
     ) {}
     
     @GrpcMethod("ActorsService")
-    async getOne(data: ActorById, metadata: Metadata): Promise<Actor> {
+    async getOne(data: ActorById): Promise<Actor> {
         const actor = await this.actorsModel.findByPk(data.id);
 
-        return {
-            actorId: actor.id,
-            firstName: actor.first_name,
-            lastName: actor.last_name,
-            lastUpdate: actor.last_update
-        }
+        return actor;
     }
 
-    @GrpcStreamMethod("ActorsService")
-    async getMany(data$: Observable<ActorById>): Promise<Observable<Actor>> {
-        const actors = await this.actorsModel.findAll<ActorModel>();
-        
-        const hero$ = new Subject<Actor>();
+    // @GrpcMethod("ActorsService")
+    // async getAll(): Promise<IActor[]> {
+    //     const actors = await this.actorsModel.findAll();
 
-        const onNext = (actorById: ActorById) => {
-            const actor = actors.find(({ id }) => id === actorById.id);
-            console.log(actor);
-            const item = {
-                actorId: actor.id,
-                firstName: actor.first_name,
-                lastName: actor.last_name,
-                lastUpdate: actor.last_update
+    //     return 
+    // }
+
+    @GrpcMethod("ActorsService")
+    getAll(): Observable<Actor> {
+        const actor$ = new Subject<Actor>();
+        const actors = from(this.actorsModel.findAll<Actor>());
+    
+        actors.subscribe({
+            next: (actors: Actor[]) => {
+                // Emit each actor using next()
+                actors.forEach(actor => {
+                    actor$.next(actor);
+                });
+            },
+            complete: () => {
+                // Complete the stream once all actors are emitted
+                actor$.complete();
+            },
+            error: (err) => {
+                // If there is an error during the database call, emit the error
+                actor$.error(err);
             }
-            hero$.next(item);
-        }
-        const onComplete = () => hero$.complete();
-        data$.subscribe({
-            next: onNext,
-            complete: onComplete
-        })
+        });
 
-        return hero$.asObservable();
+        return actor$.asObservable();
     }
 }
